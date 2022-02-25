@@ -1,3 +1,8 @@
+-- A Java Bridge example using the JSch library to sftp a file
+--
+-- The defaults in the makefile and project mean this code is effectively just doing:
+-- RUN "scp test.txt localhost:tmp/"
+
 IMPORT os
 
 IMPORT JAVA com.jcraft.jsch.JSch
@@ -29,11 +34,11 @@ MAIN
 		EXIT PROGRAM -1
 	END IF
 
-	LET l_ssh = com.jcraft.jsch.JSch.create()
-	CALL l_ssh.addIdentity("~/.ssh/id_rsa");
+	LET l_ssh = com.jcraft.jsch.JSch.create() -- instantiate the JSch object
+	CALL l_ssh.addIdentity("~/.ssh/id_rsa"); -- I'm using ssh keys rather than a password.
 	CALL l_ssh.getSession(l_user, l_hostIp, l_port) RETURNING l_sess
 
-	CALL l_sess.setConfig("StrictHostKeyChecking", "no") 
+	CALL l_sess.setConfig("StrictHostKeyChecking", "no")  -- probably not needed.
 	TRY
 		DISPLAY SFMT("Connect to %1 as user %2 ...", l_hostIp, l_user)
 		CALL l_sess.connect() 
@@ -47,23 +52,25 @@ MAIN
 	CALL l_chan.connect() 
 	IF l_chan.isConnected() THEN   
 		TRY
+			DISPLAY SFMT("Change remote directory to '%1'", l_dir)
 			CALL l_chan.cd(l_dir) 
 		CATCH
-			DISPLAY SFMT("Failed to 'cd %1'",l_dir)
+			DISPLAY SFMT("Failed to 'cd %1'", l_dir)
 			EXIT PROGRAM -1
 		END TRY
 	ELSE
 		DISPLAY "not connected"
+		EXIT PROGRAM -1
 	END IF
+
 	DISPLAY "Local PWD: ", l_chan.lpwd(), " Remote PWD: ", l_chan.pwd()
 	TRY
 		DISPLAY SFMT("Put %1 to remote %2/%3 ...", l_file, l_dir, l_file)
 		CALL l_chan.put(l_file, l_file, C_OVERWRITE )
 	CATCH
 		DISPLAY "Failed! ", STATUS
+		EXIT PROGRAM -1
 	END TRY
 	DISPLAY "Done."
 
--- or just :)
--- RUN "scp main.42m localhost:tmp/"
 END MAIN
